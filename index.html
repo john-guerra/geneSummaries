@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Document</title>
+	<style>
+		body {
+			font-family: Helvetica;
+		}
+		#btnRefresh {
+			font-size: 18pt;
+		}
+
+	</style>
+</head>
+<body>
+<h1>Results aggregation</h1>
+	<select name="type" id="typeCount">
+		<option value="splitWords">Split word</option>
+		<option value="firstWord">First word</option>
+		<option value="fullPhrase">Full name</option>
+		<option value="family">Family</option>
+		<option value="species">Species</option>
+		<option value="order">Order</option>
+		<option value="genus">Genus</option>
+		<option value="class">Class</option>
+	</select>
+	<div id="chart"></div>
+
+	<script type="text/javascript" src="d3.js" charset="utf-8"></script>
+	<script type="text/javascript" src="d3.layout.cloud.js" charset="utf-8"></script>
+
+	<script>
+		var margin = {top: 20, right: 20, bottom: 80, left: 40},
+		width = 960 - margin.left - margin.right,
+		height = 500 - margin.top - margin.bottom;
+
+		var svg = d3.select("#chart").append("svg")
+		.attr("width", width + margin.left + margin.right)
+		.attr("height", height + margin.top + margin.bottom)
+		.append("g")
+		.attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+		var fill = d3.scale.category20();
+		var size =d3.scale.pow().exponent(0.5)
+	// var size =d3.scale.linear()
+	.range([6, window.innerWidth<797? 35 : 45]);
+	// var fmt = main.co_locale.numberFormat("n");
+	var fmt = function (d) { return d; };
+
+
+	// d3.tsv("ViPhOG1644.faa.muscle.hmm.out.tbl.taxid.taxonomy.txt",
+	// d3.tsv("ViPhOG9465.faa.muscle.hmm.out.tbl.taxid.taxonomy.txt",
+		// function (err, data) {
+		//   if (err) throw err;
+
+function redraw() {
+	var data;
+	try {
+		data = d3.tsv.parse(d3.select("#textEntry").property("value"));
+	} catch (e) {
+		alert("Error parsing the TSV, check the javascript console");
+		console.log(e);
+	}
+
+
+	d3.select("#typeCount")
+		.on("change", function () { redraw(); });
+
+	console.log("redraw");
+	var typeCount = d3.select("#typeCount").property("value");
+	var dCounts = {};
+
+	function countAttr(score) {
+		return function(attr) {
+			if (!(attr in dCounts)) {
+				dCounts[attr] = {
+					text: attr,
+					count: 0
+				};
+			}
+			dCounts[attr].count +=score;
+		}
+	}
+
+	data.forEach(function (d) {
+		d.SCORE = +d.SCORE;
+		if (typeCount === "splitWords") {
+			d.ORGANISM.split(" ").forEach(countAttr(d.SCORE));
+		} else if (typeCount === "firstWord") {
+			d.first = d.ORGANISM.split(" ")[0];
+			countAttr(d.SCORE)(d.first);
+		} else if (typeCount === "fullPhrase") {
+									// FULL PHRASE
+									countAttr(d.SCORE)(d.ORGANISM);
+								} else {
+									countAttr(d.SCORE)(d[typeCount]);
+								}
+							});
+
+	size.domain(d3.extent(d3.values(dCounts), function (d) { return d.count; }));
+
+	d3.layout.cloud().size([width/2, height/2])
+	.words(d3.values(dCounts), function (d) { return d.text; })
+	.padding(1)
+		// .rotate(function() { return ~~(Math.random() * 2) * 90; })
+		.rotate(0)
+		.font("Impact")
+		.fontSize(function(d) { return size(d.count); })
+		.on("end", draw)
+		.start();
+}
+
+function draw(mData) {
+	data = mData;
+	// if (isPrimary) {
+	//     wordList.update(data);
+	// }
+	var text = svg.selectAll("text")
+	.data(data, function (d) { return d.text; });
+
+
+	var textEnter = text.enter().append("text")
+	.attr("class", "word");
+			// .style("font-size", size.range()[0] + "px");
+
+			text
+			.attr("data-toggle", "tooltip")
+			.attr("title", function(d) { return d.text + " con " + fmt(d.count) + " interacciones"; })
+			.attr("text-anchor", "middle")
+			.style("font-family", "Impact")
+			// .on("click", onClickWord)
+			.text(function(d) { return d.text; })
+			// .each(function () {
+			//     $(this).tooltip({"container": "body",
+			//     "placement": "bottom"});
+			// })
+			.style("fill", function(d, i) { return fill(i); })
+			// .style("font-size", function(d) { return size(d.count) + "px"; })
+			// .attr("transform", function(d) {
+			//     return "translate(" + [d.x, d.y] + ")rotate(" + d.rotate + ")";
+			// })
+
+			;
+
+			text.transition().duration(1000)
+			.attr("transform", function(d) {
+				return "translate(" + [d.x + width/2, d.y + height/2] + ")rotate(" + d.rotate + ")";
+			})
+			.style("font-size", function(d) { return size(d.count) + "px"; });
+
+	// text.each(function () {
+	//         $(this).tooltip("destroy");
+	//         $(this).tooltip({"container": "body",
+	//         "placement": "bottom"}); });
+
+
+	text.exit()
+	.transition()
+	.duration(500)
+	.style("opacity", 0)
+	.remove();
+
+	// $(".word").tooltip();
+}
+
+
+
+		</script>
+<div>
+	<h2>Data:</h2>
+		<button id="btnRefresh" onClick="redraw()">Refresh</button>
+		<br>
+		<br>
+		<label for="textEntry">Copy and paste here your TSV</label>
+		<br>
+		<textarea id="textEntry" rows="30" cols="80">
+ID	NAME	ORGANISM	SCORE	CODE	TAXID	family	species	order	genus	class
+NP_671641.1	EVM122 	Ectromelia virus	140	1	12643	Poxviridae	Ectromelia virus	NA	Orthopoxvirus	NA
+NP_619935.1	CPXV152 protein 	Cowpox virus	139.7	1	10243	Poxviridae	Cowpox virus	NA	Orthopoxvirus	NA
+ADZ30332.1	hypothetical protein CPXV_GER2002_MKY_144 	Cowpox virus	139.1	1	10243	Poxviridae	Cowpox virus	NA	Orthopoxvirus	NA
+ADZ24148.1	hypothetical protein CPXV_AUS1999_867_144 	Cowpox virus	138.7	1	10243	Poxviridae	Cowpox virus	NA	Orthopoxvirus	NA
+AGY99356.1	CPXV152 protein 	Cowpox virus	138.6	1	10243	Poxviridae	Cowpox virus	NA	Orthopoxvirus	NA
+ADZ29902.1	hypothetical protein CPXV_GER1990_2_144 	Cowpox virus	138.5	1	10243	Poxviridae	Cowpox virus	NA	Orthopoxvirus	NA
+ABD97490.1	unknown 	Cowpox virus	138.1	1	10243	Poxviridae	Cowpox virus	NA	Orthopoxvirus	NA
+CAD90687.1	A20L protein 	Cowpox virus	135.4	1	10243	Poxviridae	Cowpox virus	NA	Orthopoxvirus	NA
+AAU01335.1	MPXVWRAIR125 	Monkeypox virus	138.7	1	10244	Poxviridae	Monkeypox virus	NA	Orthopoxvirus	NA
+AGR37926.1	A20L 	Monkeypox virus	138.5	1	10244	Poxviridae	Monkeypox virus	NA	Orthopoxvirus	NA
+AAX78491.1	unknown 	synthetic construct	138.2	1	32630	NA	synthetic construct	NA	NA	NA
+NP_536557.1	A20L 	Monkeypox virus Zaire96I16	136.8	3	10244	Poxviridae	Monkeypox virus	NA	Orthopoxvirus	NA
+NP_570527.1	CMLV137 	Camelpox virus	135.8	1	28873	Poxviridae	Camelpox virus	NA	Orthopoxvirus	NA
+NP_042167.1	hypothetical protein VARVgp123 	Variola virus	135.5	1	10255	Poxviridae	Variola virus	NA	Orthopoxvirus	NA
+ABG44915.1	hypothetical protein VARV_NEP73_175_128 	Variola virus	130.2	1	10255	Poxviridae	Variola virus	NA	Orthopoxvirus	NA
+YP_717448.1	hypothetical protein TATV_DAH68_141 	Taterapox virus	135.2	1	28871	Poxviridae	Taterapox virus	NA	Orthopoxvirus	NA
+AAA60871.1	homolog of vaccinia virus CDS A19L (ferredoxin homolog); putative 	Variola major virus	132.7	1	12870	Poxviridae	Variola virus	NA	Orthopoxvirus	NA
+YP_009143447.1	Zinc fingerlike protein 	Raccoonpox virus	130	1	10256	Poxviridae	Raccoonpox virus	NA	Orthopoxvirus	NA
+YP_009282832.1	zinc fingerlike protein 	Skunkpox virus	127.9	1	160796	Poxviridae	Skunkpox virus	NA	Orthopoxvirus	NA
+YP_009281886.1	zinc fingerlike protein 	Volepox virus	121.7	1	28874	Poxviridae	Volepox virus	NA	Orthopoxvirus	NA
+YP_227495.1	hypothetical protein DpV83gp120 	Deerpox virus W84883	116	3	304399	Poxviridae	Mule deerpox virus	NA	Cervidpoxvirus	NA
+NP_150545.1	LSDV111 hypothetical protein 	Lumpy skin disease virus NI2490	114	3	55509	Thermodesulfobiaceae	Coprothermobacter sp.	Thermoanaerobacterales	Coprothermobacter	Clostridia
+NP_073496.1	111L protein 	Yabalike disease virus	113.7	3	10265	Poxviridae	NA	NA	Capripoxvirus	NA
+YP_004821476.1	znfinger proteinlike protein 	Yoka poxvirus	112.8	1	1076255	Poxviridae	Yoka poxvirus	NA	Orthopoxvirus	NA
+NP_570268.1	SPV108 hypothetical protein 	Swinepox virus	112.8	1	10276	Poxviridae	Swinepox virus	NA	Suipoxvirus	NA
+AGU99792.1	m109L 	Myxoma virus	112.3	1	10273	Poxviridae	Myxoma virus	NA	Leporipoxvirus	NA
+NP_051823.1	m109L 	Myxoma virus	111.1	1	10273	Poxviridae	Myxoma virus	NA	Leporipoxvirus	NA
+NP_051998.1	gp109L 	Rabbit fibroma virus	111	1	10271	Poxviridae	Rabbit fibroma virus	NA	Leporipoxvirus	NA
+NP_659683.1	hypothetical protein SPPV_106 	Sheeppox virus	109.9	1	10266	Poxviridae	Sheeppox virus	NA	Capripoxvirus	NA
+NP_938366.1	111L 	Yaba monkey tumor virus	105.5	1	38804	Poxviridae	Yaba monkey tumor virus	NA	Yatapoxvirus	NA
+YP_009046181.1	hypothetical protein pepv_197 	Penguinpox virus	104.6	1	648998	Poxviridae	Penguinpox virus	NA	Avipoxvirus	NA
+NP_039147.1	hypothetical protein FPV184 	Fowlpox virus	103	1	10261	Poxviridae	Fowlpox virus	NA	Avipoxvirus	NA
+YP_009268829.1	Zn fingerlike protein 	Pteropox virus	102.8	1	1873698	Poxviridae	Pteropox virus	NA	NA	NA
+AKC03265.1	hypothetical protein BVTX09c15_096 	Bovine papular stomatitis virus	102.2	1	129727	Poxviridae	Bovine papular stomatitis virus	NA	Parapoxvirus	NA
+NP_958005.1	ORF096 hypothetical protein 	Bovine papular stomatitis virus	102.1	1	129727	Poxviridae	Bovine papular stomatitis virus	NA	Parapoxvirus	NA
+YP_008658533.1	Zn finger protein 	Squirrelpox virus	99.2	1	240426	Poxviridae	Squirrelpox virus	NA	NA	NA
+YP_009046415.1	hypothetical protein fep_189 	Pigeonpox virus	98.8	1	10264	Poxviridae	Pigeonpox virus	NA	Avipoxvirus	NA
+NP_044075.1	MC124L 	Molluscum contagiosum virus subtype 1	97.5	1	10280	Poxviridae	Molluscum contagiosum virus	NA	Molluscipoxvirus	NA
+YP_005296316.1	unnamed protein product 	Cotia virus SPAn232	95	1	930275	Poxviridae	Cotia virus	NA	NA	NA
+NP_955281.1	CNPV258 conserved hypothetical protein 	Canarypox virus	93.8	1	44088	Poxviridae	Canarypox virus	NA	Avipoxvirus	NA
+ADC53867.1	Znfinger protein 	Pseudocowpox virus	93.3	1	129726	Poxviridae	Pseudocowpox virus	NA	Parapoxvirus	NA
+YP_003457402.1	Znfinger protein 	Pseudocowpox virus	85	1	129726	Poxviridae	Pseudocowpox virus	NA	Parapoxvirus	NA
+YP_009112835.1	putative Znfinger protein 	Parapoxvirus red deer/HL953	92.1	1	1579460	Poxviridae	Parapoxvirus red deer/HL953	NA	Parapoxvirus	NA
+YP_009177155.1	hypothetical protein 	Turkeypox virus	92	1	336486	Poxviridae	Turkeypox virus	NA	Avipoxvirus	NA
+AAR98191.1	ORF096 hypothetical protein 	Orf virus	88.2	1	10258	Poxviridae	Orf virus	NA	Parapoxvirus	NA
+AKU76585.1	Znfinger protein 	Orf virus	87.6	1	10258	Poxviridae	Orf virus	NA	Parapoxvirus	NA
+NP_957873.1	ORF096 hypothetical protein 	Orf virus	86.7	1	10258	Poxviridae	Orf virus	NA	Parapoxvirus	NA
+ADY76717.1	PP39 	Orf virus	86.6	1	10258	Poxviridae	Orf virus	NA	Parapoxvirus	NA
+AHH34285.1	Zn finger protein 	Orf virus	85.7	1	10258	Poxviridae	Orf virus	NA	Parapoxvirus	NA
+YP_784332.1	hypothetical protein CRV142 	Nile crocodilepox virus	47	1	1285600	Poxviridae	Nile crocodilepox virus	NA	Crocodylidpoxvirus	NA
+AIO73451.1	coppertranslocating Ptype ATPase 	Burkholderia multivorans	37.8	1	87883	Burkholderiaceae	Burkholderia multivorans	Burkholderiales	Burkholderia	Betaproteobacteria</textarea>
+	</div>
+	<script>
+		redraw();
+	</script>
+	</body>
+	</html>
