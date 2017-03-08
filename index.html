@@ -4,17 +4,79 @@
 	<meta charset="UTF-8">
 	<title>Document</title>
 	<style>
-		body {
-			font-family: Helvetica;
-		}
 		#btnRefresh {
 			font-size: 18pt;
+		}
+
+		body {
+		  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+		  margin: 0;
+		}
+
+		#show-length {
+		  position: absolute;
+		  top: 10px;
+		  left: 10px;
+		}
+
+		.links {
+		  fill: none;
+		  stroke: #000;
+		}
+
+		.link-extensions {
+		  fill: none;
+		  stroke: #000;
+		  stroke-opacity: .25;
+		}
+
+		.labels {
+		  font: 10px sans-serif;
+		}
+
+		.link--active {
+		  stroke: #000 !important;
+		  stroke-width: 1.5px;
+		}
+
+		.link-extension--active {
+		  stroke-opacity: .6;
+		}
+
+		.label--active {
+		  font-weight: bold;
+		}
+
+		.node circle {
+		  fill: #999;
+		}
+
+		.node text {
+		  font: 10px sans-serif;
+		}
+
+		.node--internal circle {
+		  fill: #555;
+		}
+
+		.node--internal text {
+		  text-shadow: 0 1px 0 #fff, 0 -1px 0 #fff, 1px 0 0 #fff, -1px 0 0 #fff;
+		}
+
+		.link {
+		  fill: none;
+		  stroke: #555;
+		  stroke-opacity: 0.4;
+		  stroke-width: 1.5px;
 		}
 
 	</style>
 </head>
 <body>
 <h1>Results aggregation</h1>
+	<label id="show-length">
+	  <input type="checkbox"> Show branch length
+	</label>
 	<select name="type" id="typeCount">
 		<option value="splitWords">Split word</option>
 		<option value="firstWord">First word</option>
@@ -26,9 +88,17 @@
 		<option value="class">Class</option>
 	</select>
 	<div id="chart"></div>
+	<div id="tree"><svg></svg></div>
+	<div id="dendogram"><svg></svg></div>
+
+	<script type="text/javascript" src="d3.v4.min.js" charset="utf-8"></script>
+	<script>var d3v4 = d3;</script>
+	<script type="text/javascript" src="drawTree.js" ></script>
+	<script type="text/javascript" src="dendogram.js" ></script>
 
 	<script type="text/javascript" src="d3.js" charset="utf-8"></script>
 	<script type="text/javascript" src="d3.layout.cloud.js" charset="utf-8"></script>
+	<script type="text/javascript" src="CSVToTree.js" charset="utf-8"></script>
 
 	<script>
 		var margin = {top: 20, right: 20, bottom: 80, left: 40},
@@ -54,6 +124,10 @@
 		// function (err, data) {
 		//   if (err) throw err;
 
+function computeTree(data) {
+	return new CSVtoTree("/", "NAME", "SCORE").getTreeWithHierarchy(data, ["NAME", "ORGANISM", "SCORE", "CODE", "TAXID", "family", "species", "order", "genus", "class"].reverse());
+}
+
 function redraw() {
 	var data;
 	try {
@@ -61,13 +135,28 @@ function redraw() {
 	} catch (e) {
 		alert("Error parsing the TSV, check the javascript console");
 		console.log(e);
+		return;
 	}
 
+	data.forEach(function (d) {
+		d.SCORE = +d.SCORE;
+	});
 
+	redrawWordCloud(data);
+	redrawTree(data);
+}
+
+function redrawTree(data) {
+	var tree  = computeTree(data);
+	new DrawTree().draw(tree);
+	new Dendogram().draw(tree);
+}
+
+function redrawWordCloud(data) {
 	d3.select("#typeCount")
-		.on("change", function () { redraw(); });
+		.on("change", function () { redrawWordCloud(); });
 
-	console.log("redraw");
+	console.log("redrawWordCloud");
 	var typeCount = d3.select("#typeCount").property("value");
 	var dCounts = {};
 
@@ -84,19 +173,19 @@ function redraw() {
 	}
 
 	data.forEach(function (d) {
-		d.SCORE = +d.SCORE;
+
 		if (typeCount === "splitWords") {
 			d.ORGANISM.split(" ").forEach(countAttr(d.SCORE));
 		} else if (typeCount === "firstWord") {
 			d.first = d.ORGANISM.split(" ")[0];
 			countAttr(d.SCORE)(d.first);
 		} else if (typeCount === "fullPhrase") {
-									// FULL PHRASE
-									countAttr(d.SCORE)(d.ORGANISM);
-								} else {
-									countAttr(d.SCORE)(d[typeCount]);
-								}
-							});
+				// FULL PHRASE
+				countAttr(d.SCORE)(d.ORGANISM);
+			} else {
+				countAttr(d.SCORE)(d[typeCount]);
+			}
+		});
 
 	size.domain(d3.extent(d3.values(dCounts), function (d) { return d.count; }));
 
@@ -107,11 +196,11 @@ function redraw() {
 		.rotate(0)
 		.font("Impact")
 		.fontSize(function(d) { return size(d.count); })
-		.on("end", draw)
+		.on("end", drawWordCloud)
 		.start();
 }
 
-function draw(mData) {
+function drawWordCloud(mData) {
 	data = mData;
 	// if (isPrimary) {
 	//     wordList.update(data);
