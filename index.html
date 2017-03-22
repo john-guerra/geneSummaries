@@ -146,6 +146,7 @@ function redraw() {
 		d.SCORE = +d.SCORE;
 	});
 
+	redrawTable(data,["NAME","SCORE"]);
 	redrawWordCloud(data);
 	redrawTree(data);
 }
@@ -202,6 +203,42 @@ function redrawWordCloud(data) {
 		.fontSize(function(d) { return size(d.count); })
 		.on("end", drawWordCloud)
 		.start();
+}
+
+function redrawTable (mData,columns) {
+	console.log('redrawTable');
+	var table = d3.select('body').append('table')
+	var thead = table.append('thead')
+	var	tbody = table.append('tbody');
+
+	// append the header row
+	thead.append('tr')
+	  .selectAll('th')
+	  .data(columns).enter()
+	  .append('th')
+	    .text(function (column) { 
+	    	console.log(column)
+	    	return column; });
+
+	// create a row for each object in the data
+	var rows = tbody.selectAll('tr')
+	  .data(mData)
+	  .enter()
+	  .append('tr');
+
+	// create a cell in each row for each column
+	var cells = rows.selectAll('td')
+	  .data(function (row) {
+	  	console.log(row);
+	    return columns.map(function (column) {
+	      return {column: column, value: row[column]};
+	    });
+	  })
+	  .enter()
+	  .append('td')
+	    .text(function (d) { 
+	    	console.log(d)
+	    	return d.value; });
 }
 
 function drawWordCloud(mData) {
