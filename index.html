@@ -3,84 +3,15 @@
 <head>
 	<meta charset="UTF-8">
 	<title>Document</title>
-	<style>
-		#btnRefresh {
-			font-size: 18pt;
-		}
-
-		body {
-		  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-		  margin: 0;
-		}
-
-		#show-length {
-		  position: absolute;
-		  top: 10px;
-		  left: 10px;
-		}
-
-		.links {
-		  fill: none;
-		  stroke: #000;
-		}
-
-		.link-extensions {
-		  fill: none;
-		  stroke: #000;
-		  stroke-opacity: .25;
-		}
-
-		.labels {
-		  font: 10px sans-serif;
-		}
-
-		.link--active {
-		  stroke: #000 !important;
-		  stroke-width: 1.5px;
-		}
-
-		.link-extension--active {
-		  stroke-opacity: .6;
-		}
-
-		.label--active {
-		  font-weight: bold;
-		}
-
-		.node circle {
-		  fill: #999;
-		}
-
-		.node text {
-		  font: 10px sans-serif;
-		}
-
-		.node--internal circle {
-		  fill: #555;
-		}
-
-		.node--internal text {
-		  text-shadow: 0 1px 0 #fff, 0 -1px 0 #fff, 1px 0 0 #fff, -1px 0 0 #fff;
-		}
-
-		.link {
-		  fill: none;
-		  stroke: #555;
-		  stroke-opacity: 0.4;
-		  stroke-width: 1.5px;
-		}
-
-	</style>
+	<link href="style.css" rel="stylesheet" type="text/css">
 </head>
 <body>
 <h1>Results aggregation</h1>
 	<label id="show-length">
 	  <input type="checkbox"> Show branch length
 	</label>
-	<select name="type" id="typeCount">
-		<option value="splitWords">Split word</option>
-		<option value="firstWord">First word</option>
-		<option value="fullPhrase">Full name</option>
+	<select name="type" id="attribute">
+		<option value="NAME">Name</option>
 		<option value="family">Organism</option>
 		<option value="family">Family</option>
 		<option value="species">Species</option>
@@ -88,9 +19,15 @@
 		<option value="genus">Genus</option>
 		<option value="class">Class</option>
 	</select>
+	<select name="type" id="typeCount">
+		<option value="splitWords">Split word</option>
+		<option value="firstWord">First word</option>
+		<option value="fullPhrase">Full name</option>
+	</select>
 	<div id="chart"></div>
 	<div id="tree"><svg></svg></div>
 	<div id="dendogram"><svg></svg></div>
+	<div id="table"></div>
 
 	<script type="text/javascript" src="d3.v4.min.js" charset="utf-8"></script>
 	<script>
@@ -104,200 +41,8 @@
 	<script type="text/javascript" src="d3.layout.cloud.js" charset="utf-8"></script>
 	<script type="text/javascript" src="CSVToTree.js" charset="utf-8"></script>
 
-	<script>
-		var margin = {top: 20, right: 20, bottom: 80, left: 40},
-		width = 960 - margin.left - margin.right,
-		height = 500 - margin.top - margin.bottom;
-
-		var svg = d3.select("#chart").append("svg")
-		.attr("width", width + margin.left + margin.right)
-		.attr("height", height + margin.top + margin.bottom)
-		.append("g")
-		.attr("transform", "translate(" + margin.left + "," + margin.top + ")");
-
-		var fill = d3.scale.category20();
-		var size =d3.scale.pow().exponent(0.5)
-	// var size =d3.scale.linear()
-	.range([6, window.innerWidth<797? 35 : 45]);
-	// var fmt = main.co_locale.numberFormat("n");
-	var fmt = function (d) { return d; };
-
-
-	// d3.tsv("ViPhOG1644.faa.muscle.hmm.out.tbl.taxid.taxonomy.txt",
-	// d3.tsv("ViPhOG9465.faa.muscle.hmm.out.tbl.taxid.taxonomy.txt",
-		// function (err, data) {
-		//   if (err) throw err;
-
-function computeTree(data) {
-	return new CSVtoTree("/", "NAME", "SCORE").getTreeWithHierarchy(data, ["NAME", "ORGANISM", "SCORE", "CODE", "TAXID", "family", "species", "order", "genus", "class"].reverse());
-}
-
-function redraw() {
-	var data;
-	try {
-		data = d3.tsv.parse(d3.select("#textEntry").property("value"));
-	} catch (e) {
-		alert("Error parsing the TSV, check the javascript console");
-		console.log(e);
-		return;
-	}
-
-	data.forEach(function (d) {
-		d.SCORE = +d.SCORE;
-	});
-
-	redrawTable(data,["NAME","SCORE"]);
-	redrawWordCloud(data);
-	redrawTree(data);
-}
-
-function redrawTree(data) {
-	var tree  = computeTree(data);
-	new DrawTree().draw(tree);
-	new Dendogram().draw(tree);
-}
-
-function redrawWordCloud(data) {
-	d3.select("#typeCount")
-		.on("change", function () { redraw(); });
-
-	console.log("redrawWordCloud");
-	var typeCount = d3.select("#typeCount").property("value");
-	var dCounts = {};
-
-	function countAttr(score) {
-		return function(attr) {
-			if (!(attr in dCounts)) {
-				dCounts[attr] = {
-					text: attr,
-					count: 0
-				};
-			}
-			dCounts[attr].count +=score;
-		}
-	}
-
-	data.forEach(function (d) {
-
-		if (typeCount === "splitWords") {
-			d.NAME.split(" ").forEach(countAttr(d.SCORE));
-		} else if (typeCount === "firstWord") {
-			d.first = d.NAME.split(" ")[0];
-			countAttr(d.SCORE)(d.first);
-		} else if (typeCount === "fullPhrase") {
-				// FULL PHRASE
-				countAttr(d.SCORE)(d.NAME);
-			} else {
-				countAttr(d.SCORE)(d[typeCount]);
-			}
-		});
-
-	size.domain(d3.extent(d3.values(dCounts), function (d) { return d.count; }));
-
-	d3.layout.cloud().size([width/2, height/2])
-	.words(d3.values(dCounts), function (d) { return d.text; })
-	.padding(1)
-		// .rotate(function() { return ~~(Math.random() * 2) * 90; })
-		.rotate(0)
-		.font("Impact")
-		.fontSize(function(d) { return size(d.count); })
-		.on("end", drawWordCloud)
-		.start();
-}
-
-function redrawTable (mData,columns) {
-	console.log('redrawTable');
-	var table = d3.select('body').append('table')
-	var thead = table.append('thead')
-	var	tbody = table.append('tbody');
-
-	// append the header row
-	thead.append('tr')
-	  .selectAll('th')
-	  .data(columns).enter()
-	  .append('th')
-	    .text(function (column) { 
-	    	console.log(column)
-	    	return column; });
-
-	// create a row for each object in the data
-	var rows = tbody.selectAll('tr')
-	  .data(mData)
-	  .enter()
-	  .append('tr');
-
-	// create a cell in each row for each column
-	var cells = rows.selectAll('td')
-	  .data(function (row) {
-	  	console.log(row);
-	    return columns.map(function (column) {
-	      return {column: column, value: row[column]};
-	    });
-	  })
-	  .enter()
-	  .append('td')
-	    .text(function (d) { 
-	    	console.log(d)
-	    	return d.value; });
-}
-
-function drawWordCloud(mData) {
-	data = mData;
-	// if (isPrimary) {
-	//     wordList.update(data);
-	// }
-	var text = svg.selectAll("text")
-	.data(data, function (d) { return d.text; });
-
-
-	var textEnter = text.enter().append("text")
-	.attr("class", "word");
-			// .style("font-size", size.range()[0] + "px");
-
-			text
-			.attr("data-toggle", "tooltip")
-			.attr("title", function(d) { return d.text + " con " + fmt(d.count) + " interacciones"; })
-			.attr("text-anchor", "middle")
-			.style("font-family", "Impact")
-			// .on("click", onClickWord)
-			.text(function(d) { return d.text; })
-			// .each(function () {
-			//     $(this).tooltip({"container": "body",
-			//     "placement": "bottom"});
-			// })
-			.style("fill", function(d, i) { return fill(i); })
-			// .style("font-size", function(d) { return size(d.count) + "px"; })
-			// .attr("transform", function(d) {
-			//     return "translate(" + [d.x, d.y] + ")rotate(" + d.rotate + ")";
-			// })
-
-			;
-
-			text.transition().duration(1000)
-			.attr("transform", function(d) {
-				return "translate(" + [d.x + width/2, d.y + height/2] + ")rotate(" + d.rotate + ")";
-			})
-			.style("font-size", function(d) { return size(d.count) + "px"; });
-
-	// text.each(function () {
-	//         $(this).tooltip("destroy");
-	//         $(this).tooltip({"container": "body",
-	//         "placement": "bottom"}); });
-
-
-	text.exit()
-	.transition()
-	.duration(500)
-	.style("opacity", 0)
-	.remove();
-
-	// $(".word").tooltip();
-}
-
-
-
-		</script>
-<div>
+	<script type="text/javascript" src="main.js" charset="utf-8"></script>
+	<div>
 	<h2>Data:</h2>
 		<button id="btnRefresh" onClick="redraw()">Refresh</button>
 		<br>
