@@ -21,21 +21,31 @@ var fmt = function (d) { return d; };
 	// function (err, data) {
 	//   if (err) throw err;
 
+var treeLength = function(parent,count) {
+	if(!parent.children) {
+		return count + 1;
+	}
+	else {
+		parent.children.forEach(function(child) {
+			return treeLength(child, count);
+		})
+	}
+};	
+
 function computeTree(data) {
 	return new CSVtoTree("/", "NAME", "SCORE").getTreeWithHierarchy(data, ["SCORE", "NAME", "ORGANISM", "species", "genus","family", "order", "class"].reverse());
 }
 
 function createTree(data) {
-	var tree = {};
+	var tree = {"Class":{}};
 	data.forEach(function(d){
-		if(!tree[d.class]) tree[d.class] = {};
-		if(!tree[d.class][d.order]) tree[d.class][d.order] = {};
-		if(!tree[d.class][d.order][d.family]) tree[d.class][d.order][d.family] = {};
-		if(!tree[d.class][d.order][d.family]) tree[d.class][d.order][d.family] = {};
-		if(!tree[d.class][d.order][d.family][d.genus]) tree[d.class][d.order][d.family][d.genus] = {};
-		if(!tree[d.class][d.order][d.family][d.genus][d.species]) tree[d.class][d.order][d.family][d.genus][d.species] = {};
-		if(!tree[d.class][d.order][d.family][d.genus][d.species][d.ORGANISM]) tree[d.class][d.order][d.family][d.genus][d.species][d.ORGANISM] = {};
-		if(!tree[d.class][d.order][d.family][d.genus][d.species][d.ORGANISM][d.NAME]) tree[d.class][d.order][d.family][d.genus][d.species][d.ORGANISM][d.NAME] = d.SCORE;
+		if(!tree.Class[d.class]) tree.Class[d.class] = {};
+		if(!tree.Class[d.class][d.order]) tree.Class[d.class][d.order] = {};
+		if(!tree.Class[d.class][d.order][d.family]) tree.Class[d.class][d.order][d.family] = {};
+		if(!tree.Class[d.class][d.order][d.family][d.genus]) tree.Class[d.class][d.order][d.family][d.genus] = {};
+		if(!tree.Class[d.class][d.order][d.family][d.genus][d.species]) tree.Class[d.class][d.order][d.family][d.genus][d.species] = {};
+		if(!tree.Class[d.class][d.order][d.family][d.genus][d.species][d.ORGANISM]) tree.Class[d.class][d.order][d.family][d.genus][d.species][d.ORGANISM] = {};
+		if(!tree.Class[d.class][d.order][d.family][d.genus][d.species][d.ORGANISM][d.NAME]) tree.Class[d.class][d.order][d.family][d.genus][d.species][d.ORGANISM][d.NAME] = d.SCORE;
 	});
 	return tree;
 }
@@ -102,8 +112,8 @@ function redraw() {
 }
 
 function redrawIcicle(root) {
-	var width = 1500,
-    height = 1500;
+	var width = 1750,
+    height = 1750;
 
 	var x = d3v4.scaleLinear()
 	    .range([0, width]);
@@ -122,13 +132,11 @@ function redrawIcicle(root) {
 	    .attr("width", width)
 	    .attr("height", height);
 
-	console.log(root);
 	root = d3v4.hierarchy(d3v4.entries(root)[0], function(d) {
 	  return d3v4.entries(d.value)
 	})
 	.sum(function(d) { return d.value })
 	.sort(function(a, b) { return b.value - a.value; });
-	console.log(root.descendants())
 	partition(root);
 
 	var bar = svg.selectAll("g")
@@ -147,7 +155,8 @@ function redrawIcicle(root) {
 		.attr("x", function(d) { return d.y0; })
 	  	.attr("y", function(d) { return d.x0 + (d.x1 - d.x0)/2; })
       	.attr("dy", ".35em")
-		.text(function (d) { return d.data.key});
+		.text(function (d) { 
+			return typeof(d.data.value) !== "object"? d.data.key + "(" + d.data.value + ")": d.data.key + ": " + treeLength(d,0) });
 
 	function clicked(d) {
 	  	x.domain([d.x0, d.x1]);
