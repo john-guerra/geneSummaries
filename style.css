@@ -2,6 +2,10 @@
 	font-size: 18pt;
 }
 
+rect {
+  stroke: #fff;
+}
+
 body {
 	font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
 	margin: 0;
