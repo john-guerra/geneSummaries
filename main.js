@@ -102,8 +102,8 @@ function redraw() {
 }
 
 function redrawIcicle(root) {
-	var width = 960,
-    height = 500;
+	var width = 1500,
+    height = 1000;
 
 	var x = d3v4.scaleLinear()
 	    .range([0, width]);
@@ -136,16 +136,16 @@ function redrawIcicle(root) {
 		.enter().append("g");
 	
 	var rect = bar.append("rect")
-		.attr("x", function(d) { return d.x0; })
-	  	.attr("y", function(d) { return d.y0; })
-	  	.attr("width", function(d) { return d.x1 - d.x0; })
-	  	.attr("height", function(d) { return d.y1 - d.y0; })
+		.attr("x", function(d) { return d.y0; })
+	  	.attr("y", function(d) { return d.x0; })
+	  	.attr("width", function(d) { return d.y1 - d.y0; })
+	  	.attr("height", function(d) { return d.x1 - d.x0; })
 	  	.attr("fill", function(d) { return color((d.children ? d : d.parent).data.key); })
 	  	.on("click", clicked);
 	  
 	var text = bar.append("text")
-		.attr("x", function(d) { return d.x0 + (d.x1 - d.x0)/2; })
-	  	.attr("y", function(d) { return d.y0 + (d.y1 - d.y0)/2; })
+		.attr("x", function(d) { return d.y0; })
+	  	.attr("y", function(d) { return d.x0 + (d.x1 - d.x0)/2; })
       	.attr("dy", ".35em")
 		.text(function (d) { return d.data.key});
 
@@ -155,15 +155,15 @@ function redrawIcicle(root) {
 
 	  	rect.transition()
 			.duration(750)
-			.attr("x", function(d) { return x(d.x0); })
-			.attr("y", function(d) { return y(d.y0); })
-			.attr("width", function(d) { return x(d.x1) - x(d.x0); })
-			.attr("height", function(d) { return y(d.y1) - y(d.y0); });
+			.attr("x", function(d) { return x(d.y0); })
+			.attr("y", function(d) { return y(d.x0); })
+			.attr("width", function(d) { return y(d.y1) - y(d.y0); })
+			.attr("height", function(d) { return x(d.x1) - x(d.x0); });
 
 	  	text.transition()
 			.duration(750)
-			.attr("x", function(d) { return x(d.x0 + (d.x1 - d.x0)/2); })
-			.attr("y", function(d) { return y(d.y0 + (d.y1 - d.y0)/2); });
+			.attr("x", function(d) { return y(d.y0); })
+			.attr("y", function(d) { return x(d.x0 + (d.x1 - d.x0)/2); });
 	}
 
 }
