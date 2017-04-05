@@ -103,7 +103,7 @@ function redraw() {
 
 function redrawIcicle(root) {
 	var width = 1500,
-    height = 1000;
+    height = 1500;
 
 	var x = d3v4.scaleLinear()
 	    .range([0, width]);
@@ -155,8 +155,8 @@ function redrawIcicle(root) {
 
 	  	rect.transition()
 			.duration(750)
-			.attr("x", function(d) { return x(d.y0); })
-			.attr("y", function(d) { return y(d.x0); })
+			.attr("x", function(d) { return y(d.y0); })
+			.attr("y", function(d) { return x(d.x0); })
 			.attr("width", function(d) { return y(d.y1) - y(d.y0); })
 			.attr("height", function(d) { return x(d.x1) - x(d.x0); });
 
