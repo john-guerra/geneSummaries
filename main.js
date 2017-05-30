@@ -15,11 +15,7 @@ var size =d3.scale.pow().exponent(0.5)
 // var fmt = main.co_locale.numberFormat("n");
 var fmt = function (d) { return d; };
 
-
-// d3.tsv("ViPhOG1644.faa.muscle.hmm.out.tbl.taxid.taxonomy.txt",
-// d3.tsv("ViPhOG9465.faa.muscle.hmm.out.tbl.taxid.taxonomy.txt",
-	// function (err, data) {
-	//   if (err) throw err;
+var allData;
 
 var treeLength = function(parent,count) {
 	if(!parent.children) {
@@ -50,15 +46,15 @@ function createTree(data) {
 	return tree;
 }
 
-function redraw() {
-	var data;
-	try {
-		data = d3.tsv.parse(d3.select("#textEntry").property("value"));
-	} catch (e) {
-		alert("Error parsing the TSV, check the javascript console");
-		console.log(e);
-		return;
-	}
+function redraw(data) {
+	// var data;
+	// try {
+	// 	data = d3.tsv.parse(d3.select("#textEntry").property("value"));
+	// } catch (e) {
+	// 	alert("Error parsing the TSV, check the javascript console");
+	// 	console.log(e);
+	// 	return;
+	// }
 
 	data.forEach(function (d) {
 		d.SCORE = +d.SCORE;
@@ -105,32 +101,35 @@ function redraw() {
 	    return b.count - a.count;
 	});
 
-	redrawTable(dCountsArr,["text","count"]);
+	// redrawTable(dCountsArr,["text","count"]);
 	redrawIcicle(createTree(data));
-	redrawWordCloud(data,dCounts);
-	redrawTree(data);
+	// redrawWordCloud(data,dCounts);
+	// redrawTree(data);
 }
 
 function redrawIcicle(root) {
-	var width = 1750,
-    height = 1750;
 
-	var x = d3v4.scaleLinear()
-	    .range([0, width]);
+	d3.select('#icicle').html('');
 
-	var y = d3v4.scaleLinear()
-	    .range([0, height]);
+var width = 1750,
+height = 1750;
 
-	var color = d3v4.scaleOrdinal(d3v4.schemeCategory20c);
+var x = d3v4.scaleLinear()
+    .range([0, width]);
 
-	var partition = d3v4.partition()
-	    .size([width, height])
-	    .padding(0)
-	    .round(true);
-	
-	var svg = d3v4.select("#icicle").append("svg")
-	    .attr("width", width)
-	    .attr("height", height);
+var y = d3v4.scaleLinear()
+    .range([0, height]);
+
+var color = d3v4.scaleOrdinal(d3v4.schemeCategory20c);
+
+var partition = d3v4.partition()
+    .size([width, height])
+    .padding(0)
+    .round(true);
+
+var svgIcicle = d3v4.select("#icicle").append("svg")
+    .attr("width", width)
+    .attr("height", height);
 
 	root = d3v4.hierarchy(d3v4.entries(root)[0], function(d) {
 	  return d3v4.entries(d.value)
@@ -139,41 +138,25 @@ function redrawIcicle(root) {
 	.sort(function(a, b) { return b.value - a.value; });
 	partition(root);
 
-	var bar = svg.selectAll("g")
-	  	.data(root.descendants())
-		.enter().append("g");
+	var bar = svgIcicle.selectAll("g")
+	  	.data(root.descendants());
+
+	var barsEnter = bar.enter()
+		.append("g");
 	
-	var rect = bar.append("rect")
+	barsEnter.append("rect")
 		.attr("x", function(d) { return d.y0; })
 	  	.attr("y", function(d) { return d.x0; })
 	  	.attr("width", function(d) { return d.y1 - d.y0; })
 	  	.attr("height", function(d) { return d.x1 - d.x0; })
 	  	.attr("fill", function(d) { return color((d.children ? d : d.parent).data.key); })
-	  	.on("click", clicked);
 	  
-	var text = bar.append("text")
+	barsEnter.append("text")
 		.attr("x", function(d) { return d.y0; })
 	  	.attr("y", function(d) { return d.x0 + (d.x1 - d.x0)/2; })
       	.attr("dy", ".35em")
 		.text(function (d) { 
 			return typeof(d.data.value) !== "object"? d.data.key + "(" + d.data.value + ")": d.data.key + ": " + treeLength(d,0) });
-
-	function clicked(d) {
-	  	x.domain([d.x0, d.x1]);
-	  	y.domain([d.y0, height]).range([d.depth ? 20 : 0, height]);
-
-	  	rect.transition()
-			.duration(750)
-			.attr("x", function(d) { return y(d.y0); })
-			.attr("y", function(d) { return x(d.x0); })
-			.attr("width", function(d) { return y(d.y1) - y(d.y0); })
-			.attr("height", function(d) { return x(d.x1) - x(d.x0); });
-
-	  	text.transition()
-			.duration(750)
-			.attr("x", function(d) { return y(d.y0); })
-			.attr("y", function(d) { return x(d.x0 + (d.x1 - d.x0)/2); });
-	}
 
 }
 
@@ -283,4 +266,15 @@ function drawWordCloud(mData) {
 	.remove();
 
 	// $(".word").tooltip();
+}
+
+function start() {
+	$.get( "http://localhost:8080/datos", function( data ) {
+		allData = data;
+		var first = allData.pop();
+		redraw(first);
+		d3v4.interval(function(){
+			return redraw(allData.pop());
+		}, 100)	
+	});	
 }

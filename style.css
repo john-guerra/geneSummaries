@@ -2,6 +2,10 @@
 	font-size: 18pt;
 }
 
+div.icicle * {
+	overflow: overlay;
+}
+
 rect {
   stroke: #fff;
 }
