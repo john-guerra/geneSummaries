@@ -17,16 +17,18 @@ var fmt = function (d) { return d; };
 
 var allData;
 
-var treeLength = function(parent,count) {
+function treeLength(parent) {
+	var count = 0;
 	if(!parent.children) {
-		return count + 1;
+		count += isNaN(+parent.data.value)? 0.0 : +parent.data.value;
 	}
 	else {
 		parent.children.forEach(function(child) {
-			return treeLength(child, count);
+			count += treeLength(child);
 		})
 	}
-};	
+	return count;
+}
 
 function computeTree(data) {
 	return new CSVtoTree("/", "NAME", "SCORE").getTreeWithHierarchy(data, ["SCORE", "NAME", "ORGANISM", "species", "genus","family", "order", "class"].reverse());
@@ -144,19 +146,38 @@ var svgIcicle = d3v4.select("#icicle").append("svg")
 	var barsEnter = bar.enter()
 		.append("g");
 	
-	barsEnter.append("rect")
+	var rect = barsEnter.append("rect")
 		.attr("x", function(d) { return d.y0; })
 	  	.attr("y", function(d) { return d.x0; })
 	  	.attr("width", function(d) { return d.y1 - d.y0; })
 	  	.attr("height", function(d) { return d.x1 - d.x0; })
 	  	.attr("fill", function(d) { return color((d.children ? d : d.parent).data.key); })
+	  	.on("click", clicked);
 	  
-	barsEnter.append("text")
+	var text = barsEnter.append("text")
 		.attr("x", function(d) { return d.y0; })
 	  	.attr("y", function(d) { return d.x0 + (d.x1 - d.x0)/2; })
       	.attr("dy", ".35em")
 		.text(function (d) { 
-			return typeof(d.data.value) !== "object"? d.data.key + "(" + d.data.value + ")": d.data.key + ": " + treeLength(d,0) });
+			return typeof(d.data.value) !== "object"? d.data.key + "(" + d.data.value + ")": d.data.key + ": " + Math.round(treeLength(d) * 100)/100 });
+	
+	function clicked(d) {
+	  	x.domain([d.x0, d.x1]);
+	  	y.domain([d.y0, height]).range([d.depth ? 20 : 0, height]);
+
+	  	rect.transition()
+			.duration(750)
+			.attr("x", function(d) { return y(d.y0); })
+			.attr("y", function(d) { return x(d.x0); })
+			.attr("width", function(d) { return y(d.y1) - y(d.y0); })
+			.attr("height", function(d) { return x(d.x1) - x(d.x0); });
+
+	  	text.transition()
+			.duration(750)
+			.attr("x", function(d) { return y(d.y0); })
+			.attr("y", function(d) { return x(d.x0 + (d.x1 - d.x0)/2); });
+	}
+
 
 }
 
